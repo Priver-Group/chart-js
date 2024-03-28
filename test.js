@@ -1,115 +1,236 @@
-{/*const { readFileSync } = require('fs')
-const { parse } = require('csv-parse/sync')
+document.addEventListener('DOMContentLoaded', () => {
+  const csvUrl = 'climate_service.csv'
+  let data = {}
 
-const fileContent = readFileSync('./climate_service.csv', 'utf-8')
-const csvContent = parse(fileContent, {
-    columns: true,
-    cast: (value, context) => {
-        if (context.column === 'datetime') return new Date(value)
-        if (context.column === 'tempmax') return Number(value)
-        if (context.column === 'tempmin') return Number(value)
-        if (context.column === 'temp') return Number(value)
-        if (context.column === 'precip') return Number(value)
-        if (context.column === 'windspeed') return Number(value)
-        if (context.column === 'windgust') return Number(value)
-        if (context.column === 'cloudcover') return Number(value)
-        if (context.column === 'solarradiation') return Number(value)
-        return value
-    }
-})
-console.log(csvContent)
+  const monthNames = {
+    Jan: 'jan',
+    Feb: 'feb',
+    Mar: 'mar',
+    Apr: 'apr',
+    May: 'may',
+    Jun: 'jun',
+    Jul: 'jul',
+    Aug: 'aug',
+    Sep: 'sep',
+    Oct: 'oct',
+    Nov: 'nov',
+    Dec: 'dec',
+  }
 
-// Extrae los datos de temperatura
-const tempData = csvContent.map((row) => ({
-    date: row.datetime,
-    temp: row.temp
-}))
-
-// Crea una gráfica usando los datos de temperatura
-const ctx = document.getElementById('myChart').getContext('2d');
-const myChart = new Chart(ctx, {
-    type: 'line',
-    data: {
-        labels: tempData.map((row) => row.date),
-        datasets: [{
-            label: 'Temperature',
-            data: tempData.map((row) => row.temp),
-            backgroundColor: 'rgba(54, 162, 235, 0.2)',
-            borderColor: 'rgba(54, 162, 235, 1)',
-            borderWidth: 1
-        }]
+  Papa.parse(csvUrl, {
+    header: true,
+    download: true,
+    complete: function (results) {
+      data = results.data.map((item) => {
+        const date = new Date(item.datetime)
+        date.setDate(date.getDate() + 1)
+        return {
+          datetime: `${date.getDate()} ${
+            monthNames[
+              date.toLocaleString('en-US', {
+                month: 'short',
+              })
+            ]
+          }`,
+          tempmax: item.tempmax,
+          tempmin: item.tempmin,
+          temp: item.temp,
+          precip: item.precip,
+          windspeed: item.windspeed,
+          windgust: item.windgust,
+          cloudcover: item.cloudcover,
+          solarradiation: item.solarradiation,
+        }
+      })
+      graphic()
     },
-    options: {
+  })
+
+  function graphic() {
+    const labels = data.map((item) => item.datetime)
+    const datasets = [
+      {
+        label: 'Nubosidad',
+        data: data.map((item) => item.cloudcover),
+        borderColor: '#E5E5E5',
+        backgroundColor: '#E5E5E5',
+        borderWidth: 3,
+        tension: 0.1,
+        pointRadius: (context) => {
+          return 0
+        },
+        pointHitRadius: 10,
+        spanGaps: true,
+        yAxisID: 'y1',
+      },
+      {
+        label: 'Rad. Solar',
+        data: data.map((item) => item.solarradiation),
+        borderColor: '#800080',
+        backgroundColor: '#800080',
+        borderWidth: 3,
+        tension: 0.1,
+        pointRadius: (context) => {
+          return 0
+        },
+        pointHitRadius: 10,
+        spanGaps: true,
+        yAxisID: 'y1',
+      },
+      {
+        label: 'Temperatura',
+        data: data.map((item) => item.temp),
+        borderColor: '#ff6384',
+        backgroundColor: '#ff6384',
+        borderWidth: 3,
+        tension: 0.1,
+        pointRadius: (context) => {
+          return 0
+        },
+        pointHitRadius: 10,
+        spanGaps: true,
+        yAxisID: 'y2',
+      },
+      {
+        label: 'Vel. de Viento',
+        data: data.map((item) => item.windspeed),
+        borderColor: '#228B22',
+        backgroundColor: '#228B22',
+        borderWidth: 3,
+        tension: 0.1,
+        pointRadius: (context) => {
+          return 0
+        },
+        pointHitRadius: 10,
+        spanGaps: true,
+        yAxisID: 'y2',
+      },
+      {
+        label: 'Precipitación',
+        type: 'bar',
+        categoryPercentage: 0.6,
+        barPercentage: 0.6,
+        data: data.map((item) => item.precip),
+        borderColor: '#36a2eb',
+        backgroundColor: '#36a2eb',
+        tension: 0.1,
+        pointRadius: (context) => {
+          return 0
+        },
+        pointHitRadius: 10,
+        spanGaps: true,
+        yAxisID: 'y2',
+      },
+      {
+        label: 'Vigor',
+        data: [],
+        borderColor: '#FFC107',
+        backgroundColor: '#FFC107',
+        borderWidth: 3,
+        tension: 0.1,
+        pointRadius: (context) => {
+          return 0
+        },
+        pointHitRadius: 10,
+        spanGaps: true,
+        yAxisID: 'y3',
+      },
+    ]
+
+    const gridColor = '#0070F3'
+    const textColor = '#FFFFFF'
+
+    const config = {
+      type: 'line',
+      data: {
+        labels,
+        datasets,
+      },
+      options: {
+        animation: true,
+        events: ['mouseout', 'click', 'touchstart', 'touchmove'],
+        interaction: {
+          mode: 'index',
+          intersect: false,
+        },
         responsive: true,
         scales: {
-            x: {
-                type: 'time',
-                time: {
-                    unit: 'day'
-                }
+          x: {
+            stacked: true,
+            offset: true,
+            ticks: { color: textColor, beginAtZero: true },
+            grid: {
+              display: true,
+              color: gridColor,
+              offset: false,
+              drawOnChartArea: true,
+              drawTicks: true,
             },
-            y: {
-                beginAtZero: true
-            }
-        }
-    }
-}); */}
-
-{/*<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Weather Data</title>
-</head>
-<body>
-  <canvas id="weatherChart" width="800" height="400"></canvas>
-  
-  <script>
-    // Function to load and parse CSV data
-    async function loadCSV(url) {
-      const rawData = await fetch(url);
-      const text = await rawData.text();
-      const data = d3.csvParse(text);
-      return data;
-    }
-
-    // Wait for the CSV data to load and then create the chart
-    loadCSV('data.csv').then((data) => {
-      // Create arrays for labels and datasets
-      const labels = data.map(d => d.datetime);
-      const datasets = [
-        // ... Create the datasets array as shown in the previous example ...
-      ];
-
-      // Create the chart
-      const ctx = document.getElementById('weatherChart').getContext('2d');
-      const chart = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: labels,
-          datasets: datasets,
+          },
+          y3: {
+            type: 'linear',
+            min: 0,
+            max: 1,
+            position: 'left',
+            stack: 'y',
+            stackWeight: 0.5,
+            ticks: {
+              stepSize: 0.5,
+              color: textColor,
+              beginAtZero: true,
+            },
+            grid: { color: gridColor },
+          },
+          y2: {
+            type: 'linear',
+            min: 0,
+            max: 30,
+            position: 'left',
+            stack: 'y',
+            offset: true,
+            stackWeight: 1.2,
+            ticks: {
+              stepSize: 5,
+              color: textColor,
+              beginAtZero: true,
+            },
+            grid: { color: gridColor },
+          },
+          y1: {
+            type: 'linear',
+            min: 0,
+            max: 400,
+            position: 'left',
+            stack: 'y',
+            stackWeight: 0.75,
+            ticks: {
+              stepSize: 100,
+              color: textColor,
+              beginAtZero: true,
+            },
+            grid: { color: gridColor },
+          },
         },
-        options: {
-          scales: {
-            x: {
-              display: true,
-              ticks: {
-                autoSkip: true,
-                maxTicksLimit: 20,
-              },
-            },
-            y: {
-              display: true,
-              ticks: {
-                suggestedMin: 0,
-                suggestedMax: 300,
+        plugins: {
+          tooltip: {
+            enabled: true,
+          },
+          legend: {
+            display: true,
+            position: 'top',
+            align: 'center',
+            labels: {
+              color: textColor,
+              boxHeight: 14,
+              font: {
+                size: 14,
               },
             },
           },
         },
-      });
-    });
-  </script>
-</body>
-</html>*/}
+      },
+    }
+    const ctx = document.getElementById('chart').getContext('2d')
+    new Chart(ctx, config)
+  }
+})
