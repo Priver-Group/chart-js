@@ -27,20 +27,6 @@ function interpolate(prevDate, nextDate, prevValue, nextValue, targetDate) {
   return [prevValue + ratio * (nextValue - prevValue)]
 }
 
-function interpolateData(dates, values, targetDate) {
-  const { prevDate, nextDate, prevValue, nextValue } = findPreviousAndNext(
-    dates,
-    values,
-    targetDate
-  )
-
-  if (prevValue === null || nextValue === null) {
-    return handleOutOfRange(prevValue, nextValue)
-  }
-
-  return interpolate(prevDate, nextDate, prevValue, nextValue, targetDate)
-}
-
 document.addEventListener('DOMContentLoaded', () => {
   const csvUrl = 'climate_service.csv'
   let data = {}
@@ -100,7 +86,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const dateObj = new Date(`${2024}-${month}-${day}`)
         return dateObj
       })
-
       return dateLabels
     }
     const dateLabels = stringToDate(labels)
@@ -118,7 +103,7 @@ document.addEventListener('DOMContentLoaded', () => {
         function stringJsonToDate(jsonDates) {
           const dateJson = jsonDates.map((label) => {
             const [year, month, day] = label.split('-')
-            const dateObj = new Date(+year, +month -1, +day)
+            const dateObj = new Date(+year, +month - 1, +day)
             return dateObj
           })
           return dateJson
@@ -126,48 +111,30 @@ document.addEventListener('DOMContentLoaded', () => {
         const dateJson = stringJsonToDate(jsonDates)
         console.log(dateJson)
 
-        // Format jsonDates to match the data.datetime format in UTC
-        const formattedDates = jsonDates.map((date) => {
-          const dateObj = new Date(date)
-          dateObj.setDate(dateObj.getDate() + 1)
-          const formattedMonth = dateObj
-            .toLocaleString('en-US', { month: 'short' })
-            .slice(0, 3)
-            .toLowerCase()
-          const formattedDay = dateObj.getDate().toString().padStart(1, '0')
-          return `${formattedDay} ${formattedMonth}`
-        })
-        console.log(formattedDates)
+        function interpolateData(dates, values, targetDate) {
+          const interpolatedValues = []
 
-        // get targetDate
-        function getMissingDates(labels, formattedDates) {
-          const missingDates = []
-
-          labels.forEach((label) => {
-            if (!formattedDates.includes(label)) {
-              missingDates.push(label)
-            }
-          })
-
-          return missingDates
+          for (let i = 0; i < targetDate.length; i++) {
+            const { prevDate, nextDate, prevValue, nextValue } =
+              findPreviousAndNext(dates, values, targetDate[i])
+            interpolatedValues.push(
+              interpolate(
+                prevDate,
+                nextDate,
+                prevValue,
+                nextValue,
+                targetDate[i]
+              )
+            )
+          }
+          return interpolatedValues
         }
-        const missingDates = getMissingDates(labels, formattedDates)
-        console.log(missingDates)
 
-        // format targetDate in new Dates
-        function stringTargetToDate(missingDates) {
-          const dateMissingDates = missingDates.map((label) => {
-            const [day, month, year] = label.split(' ')
-            const dateObj = new Date(`${2024}-${month}-${day}`)
-            return dateObj
-          })
-          return dateMissingDates
-        }
-        const dateTarget = stringTargetToDate(missingDates)
-        console.log(dateTarget)
+        const interpolateNDVI = interpolateData(dateJson, jsonNDVI, dateLabels)
+        console.log(interpolateNDVI)
 
-        const interpolatedNDVI = interpolateData(dateJson, jsonNDVI, dateTarget)
-        console.log(interpolatedNDVI)
+        const interpolateAfectedArea = interpolateData(dateJson, jsonAfectedArea, dateLabels)
+        console.log(interpolateAfectedArea)
 
         const datasets = [
           {
@@ -249,7 +216,10 @@ document.addEventListener('DOMContentLoaded', () => {
           },
           {
             label: 'Vigor',
-            data: [],
+            data: interpolateNDVI.map((value, index) => ({
+              x: labels[index],
+              y: value,
+            })),
             borderColor: '#FFC107',
             backgroundColor: '#FFC107',
             borderWidth: 3,
@@ -264,9 +234,12 @@ document.addEventListener('DOMContentLoaded', () => {
           },
           {
             label: 'Area Afectada',
-            data: [],
-            borderColor: '#2D1515',
-            backgroundColor: '#2D1515',
+            data: interpolateAfectedArea.map((value, index) => ({
+              x: labels[index],
+              y: value,
+            })),
+            borderColor: '#9e1a1a',
+            backgroundColor: '#9e1a1a',
             borderWidth: 3,
             tension: 0.1,
             pointRadius: (context) => {
