@@ -43,7 +43,7 @@ const monthNames = {
 }
 
 const formatDate = (dateString) => {
-  const date = new Date(dateString);
+  const date = new Date(dateString)
   date.setDate(date.getDate() + 1)
   return `${date.getDate()} ${
     monthNames[
@@ -82,7 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
   })
 
   function graphic() {
-    const labels = data.map((item) => formatDate(item.datetime));
+    const labels = data.map((item) => formatDate(item.datetime))
     console.log(labels)
 
     const formattedLabels = data.map((item) => item.datetime)
@@ -142,7 +142,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const interpolateNDVI = interpolateData(dateJson, jsonNDVI, dateLabels)
         console.log(interpolateNDVI)
 
-        const interpolateAfectedArea = interpolateData(dateJson, jsonAfectedArea, dateLabels)
+        const interpolateAfectedArea = interpolateData(
+          dateJson,
+          jsonAfectedArea,
+          dateLabels
+        )
         console.log(interpolateAfectedArea)
 
         const datasets = [
@@ -401,87 +405,115 @@ document.addEventListener('DOMContentLoaded', () => {
 })
 
 const getOrCreateLegendList = (chart, id) => {
-  const legendContainer = document.getElementById(id);
-  let listContainer = legendContainer.querySelector('ul');
+  const legendContainer = document.getElementById(id)
+  let listContainer = legendContainer.querySelector('ul')
 
   if (!listContainer) {
-    listContainer = document.createElement('ul');
-    listContainer.classList.add('chartLegend')
-    listContainer.style.display = 'flex';
-    listContainer.style.flexDirection = 'row';
-    listContainer.style.margin = 0;
-    listContainer.style.padding = 0;
-    listContainer.style.flexWrap = 'wrap';
-    listContainer.style.justifyContent = 'space-between';
-
-    legendContainer.appendChild(listContainer);
+    listContainer = document.createElement('ul')
+    if (window.matchMedia('(max-width: 400px)').matches) {
+      listContainer.classList.add('chartLegend')
+      listContainer.style.display = 'flex'
+      listContainer.style.flexDirection = 'row'
+      listContainer.style.margin = 0
+      listContainer.style.padding = 0
+      listContainer.style.flexWrap = 'wrap'
+      listContainer.style.alignItems = 'center'
+      listContainer.style.justifyContent = 'space-between'
+    } else {
+      listContainer.style.display = 'flex'
+      listContainer.style.flexDirection = 'row'
+      listContainer.style.margin = 0
+      listContainer.style.padding = 0
+    }
+    legendContainer.appendChild(listContainer)
   }
 
-  return listContainer;
-};
+  return listContainer
+}
 
 const htmlLegendPlugin = {
   id: 'htmlLegend',
   afterUpdate(chart, args, options) {
-    const ul = getOrCreateLegendList(chart, options.containerID);
+    const ul = getOrCreateLegendList(chart, options.containerID)
 
     // Remove old legend items
     while (ul.firstChild) {
-      ul.firstChild.remove();
+      ul.firstChild.remove()
     }
 
     // Reuse the built-in legendItems generator
-    const items = chart.options.plugins.legend.labels.generateLabels(chart);
+    const items = chart.options.plugins.legend.labels.generateLabels(chart)
 
-    items.forEach(item => {
-      const li = document.createElement('li');
-      li.style.alignItems = 'center';
-      li.style.cursor = 'pointer';
-      li.style.display = 'flex';
-      li.style.flexDirection = 'row';
-      li.style.margin = '1px 15px';
-      li.style.justifyContent = 'start';
-      li.style.height = '12px';
-      li.style.width = '140px';
-      li.style.fontSize = '12px';
-      li.style.fontFamily = 'Inter', 'sans-serif';
-
+    items.forEach((item) => {
+      const li = document.createElement('li')
+      if (window.matchMedia('(max-width: 400px)').matches) {
+        li.style.alignItems = 'center'
+        li.style.cursor = 'pointer'
+        li.style.display = 'flex'
+        li.style.flexDirection = 'row'
+        li.style.margin = '1px 15px'
+        li.style.justifyContent = 'start'
+        li.style.height = '12px'
+        li.style.width = '140px'
+        li.style.fontSize = '12px'
+        li.style.fontFamily = 'Inter', 'sans-serif'
+      } else {
+        li.style.alignItems = 'center'
+        li.style.cursor = 'pointer'
+        li.style.display = 'flex'
+        li.style.flexDirection = 'row'
+        li.style.marginLeft = '10px'
+      }
 
       li.onclick = () => {
-        const {type} = chart.config;
+        const { type } = chart.config
         if (type === 'pie' || type === 'doughnut') {
           // Pie and doughnut charts only have a single dataset and visibility is per item
-          chart.toggleDataVisibility(item.index);
+          chart.toggleDataVisibility(item.index)
         } else {
-          chart.setDatasetVisibility(item.datasetIndex, !chart.isDatasetVisible(item.datasetIndex));
+          chart.setDatasetVisibility(
+            item.datasetIndex,
+            !chart.isDatasetVisible(item.datasetIndex)
+          )
         }
-        chart.update();
-      };
+        chart.update()
+      }
 
       // Color box
-      const boxSpan = document.createElement('span');
-      boxSpan.style.background = item.fillStyle;
-      boxSpan.style.borderColor = item.strokeStyle;
-      boxSpan.style.borderWidth = item.lineWidth + 'px';
-      boxSpan.style.display = 'flex';
-      boxSpan.style.flexShrink = 0;
-      boxSpan.style.height = '12px';
-      boxSpan.style.marginRight = '10px';
-      boxSpan.style.width = '12px';
+      const boxSpan = document.createElement('span')
+      if (window.matchMedia('(max-width: 400px)').matches) {
+        boxSpan.style.background = item.fillStyle
+        boxSpan.style.borderColor = item.strokeStyle
+        boxSpan.style.borderWidth = item.lineWidth + 'px'
+        boxSpan.style.display = 'flex'
+        boxSpan.style.flexShrink = 0
+        boxSpan.style.height = '12px'
+        boxSpan.style.marginRight = '10px'
+        boxSpan.style.width = '12px'
+      } else {
+        boxSpan.style.background = item.fillStyle
+        boxSpan.style.borderColor = item.strokeStyle
+        boxSpan.style.borderWidth = item.lineWidth + 'px'
+        boxSpan.style.display = 'inline-block'
+        boxSpan.style.flexShrink = 0
+        boxSpan.style.height = '20px'
+        boxSpan.style.marginRight = '10px'
+        boxSpan.style.width = '20px'
+      }
 
       // Text
-      const textContainer = document.createElement('p');
-      textContainer.style.color = item.fontColor;
-      textContainer.style.margin = 0;
-      textContainer.style.padding = 0;
-      textContainer.style.textDecoration = item.hidden ? 'line-through' : '';
+      const textContainer = document.createElement('p')
+      textContainer.style.color = item.fontColor
+      textContainer.style.margin = 0
+      textContainer.style.padding = 0
+      textContainer.style.textDecoration = item.hidden ? 'line-through' : ''
 
-      const text = document.createTextNode(item.text);
-      textContainer.appendChild(text);
+      const text = document.createTextNode(item.text)
+      textContainer.appendChild(text)
 
-      li.appendChild(boxSpan);
-      li.appendChild(textContainer);
-      ul.appendChild(li);
-    });
-  }
-};
+      li.appendChild(boxSpan)
+      li.appendChild(textContainer)
+      ul.appendChild(li)
+    })
+  },
+}
