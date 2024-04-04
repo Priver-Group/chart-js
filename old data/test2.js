@@ -45,36 +45,17 @@ document.addEventListener('DOMContentLoaded', () => {
   const csvUrl = 'climate_service.csv'
   let data = {}
 
-  const monthNames = {
-    Jan: 'jan',
-    Feb: 'feb',
-    Mar: 'mar',
-    Apr: 'apr',
-    May: 'may',
-    Jun: 'jun',
-    Jul: 'jul',
-    Aug: 'aug',
-    Sep: 'sep',
-    Oct: 'oct',
-    Nov: 'nov',
-    Dec: 'dec',
-  }
-
   Papa.parse(csvUrl, {
     header: true,
     download: true,
     complete: function (results) {
       data = results.data.map((item) => {
-        const date = new Date(item.datetime)
-        date.setDate(date.getDate() + 1)
+        const dateComponents = item.datetime.split('-') // Assuming the CSV format is YYYY-MM-DD
+        const year = parseInt(dateComponents[0])
+        const month = parseInt(dateComponents[1]) - 1 // Note: month is 0-indexed in JavaScript's Date object
+        const day = parseInt(dateComponents[2])
         return {
-          datetime: `${date.getDate()} ${
-            monthNames[
-              date.toLocaleString('en-US', {
-                month: 'short',
-              })
-            ]
-          }`,
+          datetime: new Date(year, month, day),
           tempmax: item.tempmax,
           tempmin: item.tempmin,
           temp: item.temp,
@@ -93,18 +74,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const labels = data.map((item) => item.datetime)
     console.log(labels)
 
-    // format labels to new date
-    function stringToDate(labels) {
-      const dateLabels = labels.map((label) => {
-        const [day, month, year] = label.split(' ')
-        const dateObj = new Date(`${2024}-${month}-${day}`)
-        return dateObj
-      })
-
-      return dateLabels
+    function formatDates(labels) {
+      const monthNames = [
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+      ];
+    
+      return labels.map((date) => {
+        const day = date.getDate();
+        const month = monthNames[date.getMonth()];
+    
+        return `${day} ${month}`;
+      });
     }
-    const dateLabels = stringToDate(labels)
-    console.log(dateLabels)
+    
+    // Usage example
+    const formattedLabels = formatDates(labels);
+    console.log(formattedLabels);
 
     fetch('short_average_crop_indices_farm-0000000014_04-A-1-4-121-907.json')
       .then((response) => response.json())
@@ -112,13 +97,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const jsonNDVI = jsonData.data.NDVI
         const jsonAfectedArea = jsonData.data.AFECTED_AREA
         const jsonDates = jsonData.data.Dates
-        console.log(jsonDates)
 
         // format json dates in new Dates
         function stringJsonToDate(jsonDates) {
           const dateJson = jsonDates.map((label) => {
-            const [year, month, day] = label.split('-')
-            const dateObj = new Date(+year, +month -1, +day)
+            const [day, month, year] = label.split(' ')
+            const dateObj = new Date(`${year}-${month}-${day}`)
             return dateObj
           })
           return dateJson
@@ -126,48 +110,28 @@ document.addEventListener('DOMContentLoaded', () => {
         const dateJson = stringJsonToDate(jsonDates)
         console.log(dateJson)
 
-        // Format jsonDates to match the data.datetime format in UTC
-        const formattedDates = jsonDates.map((date) => {
-          const dateObj = new Date(date)
-          dateObj.setDate(dateObj.getDate() + 1)
-          const formattedMonth = dateObj
-            .toLocaleString('en-US', { month: 'short' })
-            .slice(0, 3)
-            .toLowerCase()
-          const formattedDay = dateObj.getDate().toString().padStart(1, '0')
-          return `${formattedDay} ${formattedMonth}`
-        })
-        console.log(formattedDates)
-
         // get targetDate
-        function getMissingDates(labels, formattedDates) {
+        function getMissingDates(labels, dateJson) {
           const missingDates = []
 
-          labels.forEach((label) => {
-            if (!formattedDates.includes(label)) {
-              missingDates.push(label)
+          // Convert the date objects to strings for easier comparison
+          const stringDateLabels = labels.map((date) =>
+            date.toLocaleDateString()
+          )
+          const stringDateJson = dateJson.map((date) =>
+            date.toLocaleDateString()
+          )
+
+          // Iterate over the labels and check if each date is in the json array
+          stringDateLabels.forEach((label) => {
+            if (!stringDateJson.includes(label)) {
+              missingDates.push(new Date(label))
             }
           })
-
           return missingDates
         }
-        const missingDates = getMissingDates(labels, formattedDates)
+        const missingDates = getMissingDates(labels, dateJson)
         console.log(missingDates)
-
-        // format targetDate in new Dates
-        function stringTargetToDate(missingDates) {
-          const dateMissingDates = missingDates.map((label) => {
-            const [day, month, year] = label.split(' ')
-            const dateObj = new Date(`${2024}-${month}-${day}`)
-            return dateObj
-          })
-          return dateMissingDates
-        }
-        const dateTarget = stringTargetToDate(missingDates)
-        console.log(dateTarget)
-
-        const interpolatedNDVI = interpolateData(dateJson, jsonNDVI, dateTarget)
-        console.log(interpolatedNDVI)
 
         const datasets = [
           {
@@ -287,7 +251,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const config = {
           type: 'line',
           data: {
-            labels,
+            formattedLabels,
             datasets,
           },
           options: {

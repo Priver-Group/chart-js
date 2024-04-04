@@ -1,45 +1,4 @@
-function findPreviousAndNext(dates, values, targetDate) {
-  let prevDate = null
-  let nextDate = null
-  let prevValue = null
-  let nextValue = null
-
-  for (let i = 0; i < dates.length; i++) {
-    if (dates[i] <= targetDate) {
-      prevDate = dates[i]
-      prevValue = values[i]
-    } else {
-      nextDate = dates[i]
-      nextValue = values[i]
-      break
-    }
-  }
-
-  return { prevDate, nextDate, prevValue, nextValue }
-}
-
-function handleOutOfRange(prevValue, nextValue) {
-  return prevValue === null ? nextValue : prevValue
-}
-
-function interpolate(prevDate, nextDate, prevValue, nextValue, targetDate) {
-  const ratio = (targetDate - prevDate) / (nextDate - prevDate)
-  return [prevValue + ratio * (nextValue - prevValue)]
-}
-
-function interpolateData(dates, values, targetDate) {
-  const { prevDate, nextDate, prevValue, nextValue } = findPreviousAndNext(
-    dates,
-    values,
-    targetDate
-  )
-
-  if (prevValue === null || nextValue === null) {
-    return handleOutOfRange(prevValue, nextValue)
-  }
-
-  return interpolate(prevDate, nextDate, prevValue, nextValue, targetDate)
-}
+// no usa la function interpolateData y me muestra valores erroneos
 
 document.addEventListener('DOMContentLoaded', () => {
   const csvUrl = 'climate_service.csv'
@@ -85,90 +44,148 @@ document.addEventListener('DOMContentLoaded', () => {
           solarradiation: item.solarradiation,
         }
       })
+
       graphic()
     },
   })
 
-  function graphic() {
-    const labels = data.map((item) => item.datetime)
-    console.log(labels)
+  function interpolateData(dates, values, targetDate) {
+    let prevDate = null
+    let nextDate = null
+    let prevValue = null
+    let nextValue = null
 
-    // format labels to new date
-    function stringToDate(labels) {
-      const dateLabels = labels.map((label) => {
-        const [day, month, year] = label.split(' ')
-        const dateObj = new Date(`${2024}-${month}-${day}`)
-        return dateObj
-      })
-
-      return dateLabels
+    for (let i = 0; i < dates.length; i++) {
+      if (dates[i] <= targetDate) {
+        prevDate = dates[i]
+        prevValue = values[i]
+      } else {
+        nextDate = dates[i]
+        nextValue = values[i]
+        break
+      }
     }
-    const dateLabels = stringToDate(labels)
-    console.log(dateLabels)
 
+    if (prevValue === null || nextValue === null) {
+      return prevValue === null ? nextValue : prevValue
+    }
+
+    const ratio = (targetDate - prevDate) / (nextDate - prevDate)
+    return prevValue + ratio * (nextValue - prevValue)
+  }
+
+  function graphic() {
     fetch('short_average_crop_indices_farm-0000000014_04-A-1-4-121-907.json')
       .then((response) => response.json())
       .then((jsonData) => {
         const jsonNDVI = jsonData.data.NDVI
         const jsonAfectedArea = jsonData.data.AFECTED_AREA
         const jsonDates = jsonData.data.Dates
-        console.log(jsonDates)
+        const jsonNdviLabels = jsonData.acronyms.NDVI.split(',')
 
-        // format json dates in new Dates
-        function stringJsonToDate(jsonDates) {
-          const dateJson = jsonDates.map((label) => {
-            const [year, month, day] = label.split('-')
-            const dateObj = new Date(+year, +month -1, +day)
-            return dateObj
-          })
-          return dateJson
-        }
-        const dateJson = stringJsonToDate(jsonDates)
-        console.log(dateJson)
+        // Sort JSON dates
+        jsonDates.sort((a, b) => {
+          const dateA = new Date(a)
+          const dateB = new Date(b)
 
-        // Format jsonDates to match the data.datetime format in UTC
+          if (dateA < dateB) return -1
+          if (dateA > dateB) return 1
+          return 0
+        })
+
         const formattedDates = jsonDates.map((date) => {
           const dateObj = new Date(date)
           dateObj.setDate(dateObj.getDate() + 1)
           const formattedMonth = dateObj
             .toLocaleString('en-US', { month: 'short' })
             .slice(0, 3)
-            .toLowerCase()
           const formattedDay = dateObj.getDate().toString().padStart(1, '0')
           return `${formattedDay} ${formattedMonth}`
         })
-        console.log(formattedDates)
 
-        // get targetDate
-        function getMissingDates(labels, formattedDates) {
-          const missingDates = []
+        const originalNdviLabels = jsonNdviLabels.map((acronym) => {
+          return acronym.trim()
+        })
 
-          labels.forEach((label) => {
-            if (!formattedDates.includes(label)) {
-              missingDates.push(label)
+        const originalNdviData = jsonNDVI
+        const originalAfectedAreaData = jsonAfectedArea
+
+        const interpolatedNdviData = []
+        for (let i = 0; i < data.length; i++) {
+          const csvDate = data[i].datetime
+          const date = new Date(csvDate)
+          date.setDate(date.getDate() + 1)
+          const dateString = `${date.getDate()} ${
+            monthNames[date.toLocaleString('en-US', {month: 'short',})]
+          }`
+          const dateIndex = originalNdviLabels.indexOf(dateString)
+          if (dateIndex > -1) {
+            interpolatedNdviData.push(originalNdviData[dateIndex])
+          } else {
+            const prevDateIndex = formattedDates.findIndex((d) => d <= csvDate)
+            const prevDateValue = originalNdviData[prevDateIndex]
+            const nextDateIndex = formattedDates.findIndex(
+              (d, index) => d > csvDate && index < originalNdviData.length
+            )
+            const nextDateValue = originalNdviData[nextDateIndex]
+
+            if (prevDateIndex !== -1 && nextDateIndex !== -1) {
+              const prevDate = new Date(formattedDates[prevDateIndex])
+              const nextDate = new Date(formattedDates[nextDateIndex])
+              const deltaDays = (nextDate - prevDate) / (1000 * 60 * 60 * 24)
+              const interpolatedValue =
+                prevDateValue +
+                ((nextDateValue - prevDateValue) / deltaDays) *
+                  ((new Date(csvDate).getTime() - prevDate.getTime()) /
+                    (1000 * 60 * 60 * 24))
+              interpolatedNdviData.push(interpolatedValue)
+            } else if (prevDateIndex !== -1) {
+              interpolatedNdviData.push(prevDateValue)
+            } else if (nextDateIndex !== -1) {
+              interpolatedNdviData.push(nextDateValue)
             }
-          })
-
-          return missingDates
+          }
         }
-        const missingDates = getMissingDates(labels, formattedDates)
-        console.log(missingDates)
 
-        // format targetDate in new Dates
-        function stringTargetToDate(missingDates) {
-          const dateMissingDates = missingDates.map((label) => {
-            const [day, month, year] = label.split(' ')
-            const dateObj = new Date(`${2024}-${month}-${day}`)
-            return dateObj
-          })
-          return dateMissingDates
+        const interpolatedAfectedAreaData = []
+        for (let i = 0; i < data.length; i++) {
+          const csvDate = data[i].datetime
+          const date = new Date(csvDate)
+          date.setDate(date.getDate() + 1)
+          const dateString = `${date.getDate()} ${
+            monthNames[date.toLocaleString('en-US', { month: 'short' })]
+          }`
+          const datesIndex = originalNdviLabels.indexOf(dateString)
+          if (datesIndex > -1) {
+            interpolatedAfectedAreaData.push(originalAfectedAreaData[datesIndex])
+          } else {
+            const prevDateIndex = formattedDates.findIndex((d) => d <= csvDate)
+            const prevDateValue = originalAfectedAreaData[prevDateIndex]
+            const nextDateIndex = formattedDates.findIndex(
+              (d, index) =>
+                d > csvDate && index < originalAfectedAreaData.length
+            )
+            const nextDateValue = originalAfectedAreaData[nextDateIndex]
+
+            if (prevDateIndex !== -1 && nextDateIndex !== -1) {
+              const prevDate = new Date(formattedDates[prevDateIndex])
+              const nextDate = new Date(formattedDates[nextDateIndex])
+              const deltaDays = (nextDate - prevDate) / (1000 * 1000 * 24)
+              const interpolatedValue =
+                prevDateValue +
+                ((nextDateValue - prevDateValue) / deltaDays) *
+                  ((new Date(csvDate).getTime() - prevDate.getTime()) /
+                    (1000 * 1000 * 24))
+              interpolatedAfectedAreaData.push(interpolatedValue)
+            } else if (prevDateIndex !== -1) {
+              interpolatedAfectedAreaData.push(prevDateValue)
+            } else if (nextDateIndex !== -1) {
+              interpolatedAfectedAreaData.push(nextDateValue)
+            }
+          }
         }
-        const dateTarget = stringTargetToDate(missingDates)
-        console.log(dateTarget)
 
-        const interpolatedNDVI = interpolateData(dateJson, jsonNDVI, dateTarget)
-        console.log(interpolatedNDVI)
-
+        const labels = data.map((item) => item.datetime)
         const datasets = [
           {
             label: 'Nubosidad',
@@ -249,11 +266,15 @@ document.addEventListener('DOMContentLoaded', () => {
           },
           {
             label: 'Vigor',
-            data: [],
+            data: interpolatedNdviData.map((value, index) => ({
+              x: labels[index],
+              y: value,
+            })),
             borderColor: '#FFC107',
             backgroundColor: '#FFC107',
             borderWidth: 3,
             tension: 0.1,
+            cubicInterpolationMode: 'default',
             pointRadius: (context) => {
               return 0
             },
@@ -264,11 +285,15 @@ document.addEventListener('DOMContentLoaded', () => {
           },
           {
             label: 'Area Afectada',
-            data: [],
-            borderColor: '#2D1515',
-            backgroundColor: '#2D1515',
+            data: interpolatedAfectedAreaData.map((value, index) => ({
+              x: labels[index],
+              y: value,
+            })),
+            borderColor: '#9e1a1a',
+            backgroundColor: '#9e1a1a',
             borderWidth: 3,
             tension: 0.1,
+            cubicInterpolationMode: 'default',
             pointRadius: (context) => {
               return 0
             },
@@ -278,7 +303,6 @@ document.addEventListener('DOMContentLoaded', () => {
             yAxisID: 'y1',
           },
         ]
-        console.log(datasets)
 
         const gridColor = '#0070F3'
         const gridColor2 = '#4c8aba'

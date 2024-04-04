@@ -93,18 +93,25 @@ document.addEventListener('DOMContentLoaded', () => {
     const labels = data.map((item) => item.datetime)
     console.log(labels)
 
-    // format labels to new date
+    // format labels in new Dates
     function stringToDate(labels) {
       const dateLabels = labels.map((label) => {
         const [day, month, year] = label.split(' ')
-        const dateObj = new Date(`${2024}-${month}-${day}`)
+        const dateObj = new Date(`${year}-${month}-${day}`)
         return dateObj
       })
-
       return dateLabels
     }
     const dateLabels = stringToDate(labels)
     console.log(dateLabels)
+
+
+
+    const dates = csvUrl.map((row) => {
+      const [, year, month, day] = row.datetime.match(/\d+/g)
+      return new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
+    })
+    console.log(dates);
 
     fetch('short_average_crop_indices_farm-0000000014_04-A-1-4-121-907.json')
       .then((response) => response.json())
@@ -112,13 +119,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const jsonNDVI = jsonData.data.NDVI
         const jsonAfectedArea = jsonData.data.AFECTED_AREA
         const jsonDates = jsonData.data.Dates
-        console.log(jsonDates)
 
         // format json dates in new Dates
         function stringJsonToDate(jsonDates) {
           const dateJson = jsonDates.map((label) => {
-            const [year, month, day] = label.split('-')
-            const dateObj = new Date(+year, +month -1, +day)
+            const [day, month, year] = label.split(' ')
+            const dateObj = new Date(`${year}-${month}-${day}`)
             return dateObj
           })
           return dateJson
@@ -126,48 +132,28 @@ document.addEventListener('DOMContentLoaded', () => {
         const dateJson = stringJsonToDate(jsonDates)
         console.log(dateJson)
 
-        // Format jsonDates to match the data.datetime format in UTC
-        const formattedDates = jsonDates.map((date) => {
-          const dateObj = new Date(date)
-          dateObj.setDate(dateObj.getDate() + 1)
-          const formattedMonth = dateObj
-            .toLocaleString('en-US', { month: 'short' })
-            .slice(0, 3)
-            .toLowerCase()
-          const formattedDay = dateObj.getDate().toString().padStart(1, '0')
-          return `${formattedDay} ${formattedMonth}`
-        })
-        console.log(formattedDates)
-
         // get targetDate
-        function getMissingDates(labels, formattedDates) {
+        function getMissingDates(dateLabels, dateJson) {
           const missingDates = []
 
-          labels.forEach((label) => {
-            if (!formattedDates.includes(label)) {
-              missingDates.push(label)
+          // Convert the date objects to strings for easier comparison
+          const stringDateLabels = dateLabels.map((date) =>
+            date.toLocaleDateString()
+          )
+          const stringDateJson = dateJson.map((date) =>
+            date.toLocaleDateString()
+          )
+
+          // Iterate over the labels and check if each date is in the json array
+          stringDateLabels.forEach((label) => {
+            if (!stringDateJson.includes(label)) {
+              missingDates.push(new Date(label))
             }
           })
-
           return missingDates
         }
-        const missingDates = getMissingDates(labels, formattedDates)
+        const missingDates = getMissingDates(dateLabels, dateJson)
         console.log(missingDates)
-
-        // format targetDate in new Dates
-        function stringTargetToDate(missingDates) {
-          const dateMissingDates = missingDates.map((label) => {
-            const [day, month, year] = label.split(' ')
-            const dateObj = new Date(`${2024}-${month}-${day}`)
-            return dateObj
-          })
-          return dateMissingDates
-        }
-        const dateTarget = stringTargetToDate(missingDates)
-        console.log(dateTarget)
-
-        const interpolatedNDVI = interpolateData(dateJson, jsonNDVI, dateTarget)
-        console.log(interpolatedNDVI)
 
         const datasets = [
           {
