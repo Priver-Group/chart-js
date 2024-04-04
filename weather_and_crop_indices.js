@@ -27,24 +27,36 @@ function interpolate(prevDate, nextDate, prevValue, nextValue, targetDate) {
   return [prevValue + ratio * (nextValue - prevValue)]
 }
 
+const monthNames = {
+  Jan: 'jan',
+  Feb: 'feb',
+  Mar: 'mar',
+  Apr: 'apr',
+  May: 'may',
+  Jun: 'jun',
+  Jul: 'jul',
+  Aug: 'aug',
+  Sep: 'sep',
+  Oct: 'oct',
+  Nov: 'nov',
+  Dec: 'dec',
+}
+
+const formatDate = (dateString) => {
+  const date = new Date(dateString);
+  date.setDate(date.getDate() + 1)
+  return `${date.getDate()} ${
+    monthNames[
+      date.toLocaleString('en-US', {
+        month: 'short',
+      })
+    ]
+  }`
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   const csvUrl = 'climate_service.csv'
   let data = {}
-
-  const monthNames = {
-    Jan: 'jan',
-    Feb: 'feb',
-    Mar: 'mar',
-    Apr: 'apr',
-    May: 'may',
-    Jun: 'jun',
-    Jul: 'jul',
-    Aug: 'aug',
-    Sep: 'sep',
-    Oct: 'oct',
-    Nov: 'nov',
-    Dec: 'dec',
-  }
 
   Papa.parse(csvUrl, {
     header: true,
@@ -54,13 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const date = new Date(item.datetime)
         date.setDate(date.getDate() + 1)
         return {
-          datetime: `${date.getDate()} ${
-            monthNames[
-              date.toLocaleString('en-US', {
-                month: 'short',
-              })
-            ]
-          }`,
+          datetime: item.datetime,
           tempmax: item.tempmax,
           tempmin: item.tempmin,
           temp: item.temp,
@@ -76,19 +82,22 @@ document.addEventListener('DOMContentLoaded', () => {
   })
 
   function graphic() {
-    const labels = data.map((item) => item.datetime)
+    const labels = data.map((item) => formatDate(item.datetime));
     console.log(labels)
 
+    const formattedLabels = data.map((item) => item.datetime)
+    console.log(formattedLabels)
+
     // format labels to new date
-    function stringToDate(labels) {
-      const dateLabels = labels.map((label) => {
+    function stringToDate(formattedLabels) {
+      const dateLabels = formattedLabels.map((label) => {
         const [day, month, year] = label.split(' ')
-        const dateObj = new Date(`${2024}-${month}-${day}`)
+        const dateObj = new Date(`${year}-${month}-${day}`)
         return dateObj
       })
       return dateLabels
     }
-    const dateLabels = stringToDate(labels)
+    const dateLabels = stringToDate(formattedLabels)
     console.log(dateLabels)
 
     fetch('short_average_crop_indices_farm-0000000014_04-A-1-4-121-907.json')
@@ -264,6 +273,8 @@ document.addEventListener('DOMContentLoaded', () => {
             datasets,
           },
           options: {
+            maintainAspectRatio: false,
+            responsive: true,
             animation: true,
             transitions: {
               show: {
@@ -292,7 +303,6 @@ document.addEventListener('DOMContentLoaded', () => {
               mode: 'index',
               intersect: false,
             },
-            responsive: true,
             scales: {
               y3: {
                 type: 'linear',
@@ -364,12 +374,16 @@ document.addEventListener('DOMContentLoaded', () => {
               tooltip: {
                 enabled: true,
               },
+              htmlLegend: {
+                containerID: 'legend-container',
+              },
               legend: {
-                display: true,
+                display: false,
                 position: 'top',
                 align: 'center',
                 labels: {
                   color: textColor,
+                  padding: 10,
                   boxHeight: 14,
                   font: {
                     size: 14,
@@ -378,9 +392,96 @@ document.addEventListener('DOMContentLoaded', () => {
               },
             },
           },
+          plugins: [htmlLegendPlugin],
         }
         const ctx = document.getElementById('chart').getContext('2d')
         new Chart(ctx, config)
       })
   }
 })
+
+const getOrCreateLegendList = (chart, id) => {
+  const legendContainer = document.getElementById(id);
+  let listContainer = legendContainer.querySelector('ul');
+
+  if (!listContainer) {
+    listContainer = document.createElement('ul');
+    listContainer.classList.add('chartLegend')
+    listContainer.style.display = 'flex';
+    listContainer.style.flexDirection = 'row';
+    listContainer.style.margin = 0;
+    listContainer.style.padding = 0;
+    listContainer.style.flexWrap = 'wrap';
+    listContainer.style.justifyContent = 'space-between';
+
+    legendContainer.appendChild(listContainer);
+  }
+
+  return listContainer;
+};
+
+const htmlLegendPlugin = {
+  id: 'htmlLegend',
+  afterUpdate(chart, args, options) {
+    const ul = getOrCreateLegendList(chart, options.containerID);
+
+    // Remove old legend items
+    while (ul.firstChild) {
+      ul.firstChild.remove();
+    }
+
+    // Reuse the built-in legendItems generator
+    const items = chart.options.plugins.legend.labels.generateLabels(chart);
+
+    items.forEach(item => {
+      const li = document.createElement('li');
+      li.style.alignItems = 'center';
+      li.style.cursor = 'pointer';
+      li.style.display = 'flex';
+      li.style.flexDirection = 'row';
+      li.style.margin = '1px 15px';
+      li.style.justifyContent = 'start';
+      li.style.height = '12px';
+      li.style.width = '140px';
+      li.style.fontSize = '12px';
+      li.style.fontFamily = 'Inter', 'sans-serif';
+
+
+      li.onclick = () => {
+        const {type} = chart.config;
+        if (type === 'pie' || type === 'doughnut') {
+          // Pie and doughnut charts only have a single dataset and visibility is per item
+          chart.toggleDataVisibility(item.index);
+        } else {
+          chart.setDatasetVisibility(item.datasetIndex, !chart.isDatasetVisible(item.datasetIndex));
+        }
+        chart.update();
+      };
+
+      // Color box
+      const boxSpan = document.createElement('span');
+      boxSpan.style.background = item.fillStyle;
+      boxSpan.style.borderColor = item.strokeStyle;
+      boxSpan.style.borderWidth = item.lineWidth + 'px';
+      boxSpan.style.display = 'flex';
+      boxSpan.style.flexShrink = 0;
+      boxSpan.style.height = '12px';
+      boxSpan.style.marginRight = '10px';
+      boxSpan.style.width = '12px';
+
+      // Text
+      const textContainer = document.createElement('p');
+      textContainer.style.color = item.fontColor;
+      textContainer.style.margin = 0;
+      textContainer.style.padding = 0;
+      textContainer.style.textDecoration = item.hidden ? 'line-through' : '';
+
+      const text = document.createTextNode(item.text);
+      textContainer.appendChild(text);
+
+      li.appendChild(boxSpan);
+      li.appendChild(textContainer);
+      ul.appendChild(li);
+    });
+  }
+};

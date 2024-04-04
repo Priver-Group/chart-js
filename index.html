@@ -14,6 +14,12 @@
       body {
         background: #000000;
       }
+      .container {
+        display: flex;
+        justify-content: flex-start;
+        align-items: center;
+        flex-direction: column;
+      }
       .text {
         display: flex;
         justify-content: center;
@@ -21,20 +27,19 @@
         color: white;
         font-size: 20px;
         font-family: 'Inter', sans-serif;
-        margin: 5px;
+        margin: 10px;
       }
-      div {
+      .canvasDiv {
         display: flex;
-        justify-content: center;
+        justify-content: flex-start;
         align-items: center;
         flex-direction: column;
-        margin: 20px;
         background: #000000f1;
+        width: 92%;
+        height: 80vh;
+        margin: 20px;
       }
       canvas {
-        margin: 10px;
-        max-width: 95%;
-        max-height: 86%;
         animation: scale-up-top-left 1s;
       }
 
@@ -48,20 +53,52 @@
           transform-origin: top left;
         }
       }
+
+      @media screen and (max-width: 768px) {
+        .container {
+          display: flex;
+          justify-content: flex-start;
+          align-items: center;
+          flex-direction: column;
+        }
+        .text {
+          font-size: 14px;
+        }
+        .canvasDiv {
+          width: 92%;
+          height: 75vh;
+        }
+      }
+
+      @media screen and (max-width: 480px) {
+        .text {
+          font-size: 14px;
+          margin: 10px;
+        }
+        .canvasDiv {
+          width: 92%;
+          height: 72vh;
+        }
+      }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.0/papaparse.min.js"></script>
   </head>
   <body>
-    <div>
-      <h1 class="text">
-        Mediciones de la Estación Meteorológica Virtual más cercana a su
-        siembra.
-      </h1>
-      <h2 class="text">
-        Índices de cultivo de su siembra (NDVI y % Área afectada)
-      </h2>
-      <canvas class="scale-up-top-left" id="chart"></canvas>
+    <div class="container">
+      <div class="textContainer">
+        <h1 class="text">
+          Mediciones de la Estación Meteorológica Virtual más cercana a su
+          siembra.
+        </h1>
+        <h2 class="text">
+          Índices de cultivo de su siembra (NDVI y % Área afectada)
+        </h2>
+      </div>
+      <div id="legend-container"></div>
+      <div class="canvasDiv">
+        <canvas class="scale-up-top-left" id="chart"></canvas>
+      </div>
     </div>
 
     <script src="weather_and_crop_indices.js"></script>
