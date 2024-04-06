@@ -98,6 +98,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return dateLabels
     }
     const dateLabels = stringToDate(formattedLabels)
+    console.log(dateLabels)
 
     fetch('short_average_crop_indices_farm-0000000014_04-A-1-4-121-907.json')
       .then((response) => response.json())
@@ -117,17 +118,25 @@ document.addEventListener('DOMContentLoaded', () => {
           return dateJson
         }
         const dateJson = stringJsonToDate(jsonDates)
+        console.log(dateJson)
 
         function interpolateData(dates, values, targetDate) {
-          const interpolatedValues = [];
-        
+          const interpolatedValues = []
+
           for (let i = 0; i < targetDate.length; i++) {
-            const { prevDate, nextDate, prevValue, nextValue } = findPreviousAndNext(dates, values, targetDate[i]);
-            const interpolatedValue = interpolate(prevDate, nextDate, prevValue, nextValue, targetDate[i]);
-            interpolatedValues.push(interpolatedValue.toString());
+            const { prevDate, nextDate, prevValue, nextValue } =
+              findPreviousAndNext(dates, values, targetDate[i])
+            interpolatedValues.push(
+              interpolate(
+                prevDate,
+                nextDate,
+                prevValue,
+                nextValue,
+                targetDate[i]
+              )
+            )
           }
-        
-          return interpolatedValues;
+          return interpolatedValues
         }
 
         const interpolateNDVI = interpolateData(dateJson, jsonNDVI, dateLabels)
@@ -234,19 +243,17 @@ document.addEventListener('DOMContentLoaded', () => {
             pointHitRadius: 10,
             spanGaps: true,
             fill: false,
-            yAxisID: 'y4',
+            yAxisID: 'y3',
           },
           {
             label: 'Area Afectada',
-            type: 'bar',
-            categoryPercentage: 0.6,
-            barPercentage: 0.6,
             data: interpolateAfectedArea.map((value, index) => ({
               x: labels[index],
               y: value,
             })),
             borderColor: '#9e1a1a',
             backgroundColor: '#9e1a1a',
+            borderWidth: 3,
             tension: 0.1,
             pointRadius: (context) => {
               return 0
@@ -254,7 +261,7 @@ document.addEventListener('DOMContentLoaded', () => {
             pointHitRadius: 10,
             spanGaps: true,
             fill: false,
-            yAxisID: 'y3',
+            yAxisID: 'y1',
           },
         ]
         console.log(datasets)
@@ -301,32 +308,16 @@ document.addEventListener('DOMContentLoaded', () => {
               intersect: false,
             },
             scales: {
-              y4: {
+              y3: {
                 type: 'linear',
                 min: 0,
                 max: 1,
                 position: 'left',
                 stack: 'y',
-                offset: false,
-                stackWeight: 0.1,
-                ticks: {
-                  color: textColor,
-                  beginAtZero: true,
-                },
-                grid: {
-                  color: gridColor2,
-                },
-              },
-              y3: {
-                type: 'linear',
-                min: 0,
-                max: 100,
-                position: 'left',
-                stack: 'y',
                 offset: true,
                 stackWeight: 0.5,
                 ticks: {
-                  stepSize: 20,
+                  stepSize: 0.5,
                   color: textColor,
                   beginAtZero: true,
                 },
@@ -341,9 +332,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 position: 'left',
                 stack: 'y',
                 offset: true,
-                stackWeight: 0.4,
+                stackWeight: 1.2,
                 ticks: {
-                  stepSize: 10,
+                  stepSize: 5,
                   color: textColor,
                   beginAtZero: true,
                 },
@@ -357,7 +348,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 max: 400,
                 position: 'left',
                 stack: 'y',
-                stackWeight: 0.4,
+                stackWeight: 0.7,
                 ticks: {
                   stepSize: 100,
                   color: textColor,
@@ -421,12 +412,11 @@ const getOrCreateLegendList = (chart, id) => {
     listContainer = document.createElement('ul')
     if (window.matchMedia('(max-width: 400px)').matches) {
       listContainer.classList.add('chartLegend')
-      listContainer.style.display = 'grid'
-      listContainer.style.gridTemplateColumns = '120px 120px'
-      listContainer.style.gridTemplateRows = '12px 12px 12px 12px'
+      listContainer.style.display = 'flex'
       listContainer.style.flexDirection = 'row'
       listContainer.style.margin = 0
       listContainer.style.padding = 0
+      listContainer.style.flexWrap = 'wrap'
       listContainer.style.alignItems = 'center'
       listContainer.style.justifyContent = 'space-between'
     } else {

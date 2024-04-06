@@ -20,28 +20,12 @@
         align-items: center;
         flex-direction: column;
       }
-      .text-container {
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        margin-bottom: 10px;
-      }
-      h1 {
+      .text {
         display: flex;
         justify-content: center;
         align-items: center;
         color: white;
-        font-size: 14px;
-        font-family: 'Inter', sans-serif;
-        margin: 10px;
-      }
-      h2 {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        color: white;
-        font-size: 14px;
+        font-size: 20px;
         font-family: 'Inter', sans-serif;
         margin: 10px;
       }
@@ -51,8 +35,9 @@
         align-items: center;
         flex-direction: column;
         background: #000000f1;
-        width: 95%;
+        width: 92%;
         height: 80vh;
+        margin: 20px;
       }
       canvas {
         animation: scale-up-top-left 1s;
@@ -69,24 +54,30 @@
         }
       }
 
-      @media screen and (max-width: 400px) {
-        h1 {
-          font-size: 9px;
-          margin: 5px;
+      @media screen and (max-width: 800px) {
+        .container {
           display: flex;
+          justify-content: flex-start;
           align-items: center;
-          justify-content: center;
+          flex-direction: column;
         }
-        h2 {
-          font-size: 9px;
-          margin: 5px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
+        .text {
+          font-size: 14px;
         }
         .canvasDiv {
           width: 92%;
-          height: 80vh;
+          height: 75vh;
+        }
+      }
+
+      @media screen and (max-width: 400px) {
+        .text {
+          font-size: 14px;
+          margin: 10px;
+        }
+        .canvasDiv {
+          width: 92%;
+          height: 72vh;
         }
       }
     </style>
@@ -95,12 +86,14 @@
   </head>
   <body>
     <div class="container">
-      <div class="text-container">
-        <h1>
+      <div class="textContainer">
+        <h1 class="text">
           Mediciones de la Estación Meteorológica Virtual más cercana a su
           siembra.
         </h1>
-        <h2>Índices de cultivo de su siembra (NDVI y % Área afectada)</h2>
+        <h2 class="text">
+          Índices de cultivo de su siembra (NDVI y % Área afectada)
+        </h2>
       </div>
       <div id="legend-container"></div>
       <div class="canvasDiv">
