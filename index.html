@@ -20,14 +20,19 @@
         align-items: center;
         flex-direction: column;
       }
-      .text {
+      .text-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 30px;
+      }
+      h1 {
         display: flex;
         justify-content: center;
         align-items: center;
         color: white;
         font-size: 20px;
         font-family: 'Inter', sans-serif;
-        margin: 10px;
       }
       .canvasDiv {
         display: flex;
@@ -35,9 +40,8 @@
         align-items: center;
         flex-direction: column;
         background: #000000f1;
-        width: 92%;
-        height: 80vh;
-        margin: 20px;
+        width: 95%;
+        height: 90vh;
       }
       canvas {
         animation: scale-up-top-left 1s;
@@ -54,30 +58,20 @@
         }
       }
 
-      @media screen and (max-width: 800px) {
-        .container {
-          display: flex;
-          justify-content: flex-start;
-          align-items: center;
-          flex-direction: column;
-        }
-        .text {
-          font-size: 14px;
-        }
-        .canvasDiv {
-          width: 92%;
-          height: 75vh;
-        }
-      }
-
       @media screen and (max-width: 400px) {
-        .text {
+        .text-container {
+          width: 300px;
+        }
+        h1 {
           font-size: 14px;
           margin: 10px;
         }
         .canvasDiv {
-          width: 92%;
-          height: 72vh;
+          width: 95%;
+          height: 80vh;
+        }
+        .text-container {
+          margin: 10px;
         }
       }
     </style>
@@ -86,14 +80,11 @@
   </head>
   <body>
     <div class="container">
-      <div class="textContainer">
-        <h1 class="text">
-          Mediciones de la Estación Meteorológica Virtual más cercana a su
-          siembra.
+      <div class="text-container">
+        <h1>
+          Data climática (Estación Meteorológica Virtual más cercana) y datos
+          satelitales
         </h1>
-        <h2 class="text">
-          Índices de cultivo de su siembra (NDVI y % Área afectada)
-        </h2>
       </div>
       <div id="legend-container"></div>
       <div class="canvasDiv">
@@ -102,5 +93,36 @@
     </div>
 
     <script src="weather_and_crop_indices.js"></script>
+    <script type="text/javascript">
+      document.addEventListener('DOMContentLoaded', () => {
+        const csvUrl = 'climate_service.csv'
+        const short_average_crop_indices_url =
+          'short_average_crop_indices_farm-0000000014_04-A-1-4-121-907.json'
+        let data = {}
+
+        Papa.parse(csvUrl, {
+          header: true,
+          download: true,
+          complete: function (results) {
+            data = results.data.map((item) => {
+              const date = new Date(item.datetime)
+              date.setDate(date.getDate() + 1)
+              return {
+                datetime: item.datetime,
+                tempmax: item.tempmax,
+                tempmin: item.tempmin,
+                temp: item.temp,
+                precip: item.precip,
+                windspeed: item.windspeed,
+                windgust: item.windgust,
+                cloudcover: item.cloudcover,
+                solarradiation: item.solarradiation,
+              }
+            })
+            graphic(data, short_average_crop_indices_url)
+          },
+        })
+      })
+    </script>
   </body>
 </html>
