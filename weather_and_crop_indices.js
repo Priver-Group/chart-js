@@ -455,6 +455,12 @@ function graphic(data, short_average_crop_indices_url) {
               ticks: {
                 color: textColor,
                 beginAtZero: true,
+                minRotation: window.matchMedia('(max-width: 480px)').matches
+                ? 45
+                : 0,
+              maxRotation: window.matchMedia('(max-width: 480px)').matches
+                ? 45
+                : 0,
               },
               grid: {
                 display: true,
