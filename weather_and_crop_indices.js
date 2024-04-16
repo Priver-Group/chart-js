@@ -284,8 +284,8 @@ function graphic(data, short_average_crop_indices_url) {
           categoryPercentage: 0.6,
           barPercentage: 0.6,
           data: filledAfectedArea,
-          borderColor: '#9e1a1a',
-          backgroundColor: '#9e1a1a',
+          borderColor: '#E4684E',
+          backgroundColor: '#E4684E',
           tension: 0.1,
           pointRadius: (context) => {
             return 0
@@ -442,7 +442,7 @@ function graphic(data, short_average_crop_indices_url) {
               stackWeight: 0.5,
               ticks: {
                 stepSize: 50,
-                color: '#FF0000',
+                color: '#E4684E',
                 beginAtZero: true,
               },
               grid: {
@@ -457,10 +457,10 @@ function graphic(data, short_average_crop_indices_url) {
                 beginAtZero: true,
                 minRotation: window.matchMedia('(max-width: 480px)').matches
                 ? 45
-                : 0,
+                : 50,
               maxRotation: window.matchMedia('(max-width: 480px)').matches
                 ? 45
-                : 0,
+                : 50,
               },
               grid: {
                 display: true,
