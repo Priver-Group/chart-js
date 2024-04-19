@@ -55,7 +55,7 @@ const formatDate = (dateString) => {
 }
 
 function graphic(data, short_average_crop_indices_url) {
-  const labels = data.map((item) => formatDate(item.datetime))
+  const labels = data.filter((item) => item.datetime !== '' && item.datetime !== null).map((item) => formatDate(item.datetime))
   console.log(labels)
 
   const formattedLabels = data.map((item) => item.datetime)
