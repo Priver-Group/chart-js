@@ -27,6 +27,60 @@ function interpolate(prevDate, nextDate, prevValue, nextValue, targetDate) {
   return [prevValue + ratio * (nextValue - prevValue)]
 }
 
+// format json dates in new Dates
+function stringJsonToDate(jsonDates) {
+  const dateJson = jsonDates.map((label) => {
+    const [year, month, day] = label.split('-')
+    const dateObj = new Date(+year, +month - 1, +day)
+    return dateObj
+  })
+  return dateJson
+}
+
+// format labels to new date
+function stringToDate(formattedLabels) {
+  const dateLabels = formattedLabels.map((label) => {
+    const [day, month, year] = label.split(' ')
+    const dateObj = new Date(`${year}-${month}-${day}`)
+    return dateObj
+  })
+  return dateLabels
+}
+
+function interpolateData(dates, values, targetDate) {
+  const interpolatedValues = []
+
+  for (let i = 0; i < targetDate.length; i++) {
+    const { prevDate, nextDate, prevValue, nextValue } = findPreviousAndNext(
+      dates,
+      values,
+      targetDate[i]
+    )
+    interpolatedValues.push(
+      interpolate(prevDate, nextDate, prevValue, nextValue, targetDate[i])[0]
+    )
+  }
+
+  return interpolatedValues
+}
+
+// fill in missing data values
+function fillMissingDays(jsonDates, jsonAfectedArea, formattedLabels) {
+  const result = []
+  const jsonDatesSet = new Set(jsonDates)
+
+  for (const label of formattedLabels) {
+    if (jsonDatesSet.has(label)) {
+      const index = jsonDates.indexOf(label)
+      result.push(jsonAfectedArea[index])
+    } else {
+      result.push('')
+    }
+  }
+
+  return result
+}
+
 const monthNames = {
   Jan: 'jan',
   Feb: 'feb',
@@ -39,7 +93,7 @@ const monthNames = {
   Sep: 'sep',
   Oct: 'oct',
   Nov: 'nov',
-  Dec: 'dec',
+  Dec: 'dec'
 }
 
 const formatDate = (dateString) => {
@@ -48,262 +102,92 @@ const formatDate = (dateString) => {
   return `${date.getDate()} ${
     monthNames[
       date.toLocaleString('en-US', {
-        month: 'short',
+        month: 'short'
       })
     ]
   }`
 }
 
-function graphic(data, short_average_crop_indices_url) {
-  const labels = data.filter((item) => item.datetime !== '' && item.datetime !== null).map((item) => formatDate(item.datetime))
-  console.log(labels)
+const climateConfig = {
+  cloudcover: { color: "#FFC107", units: "%", type: "line", axis: "y1", label: "Nubosidad" },
+  solarradiation: { color: "#800080", units: "W/m2", type: "line", axis: "y1", label: "Rad. Solar", },
+  temp: { color: "#ff6384", units: "ºC", type: "line", axis: "y2", label: "Temperatura" },
+  windspeed: { color: "#228B22", units: "m/s", type: "line", axis: "y2", label: "Vel. de Viento" },
+  precip: { color: "#36A2Eb", units: "mm", type: "bar", axis: "y2", label: "Precipitación" },
+  NDVI: { color: "#E5E5E5", units: "", type: "line", axis: "y3", label: "Vigor" },
+  AFECTED_AREA: { color: "#E4684E", units: "", type: "bar", axis: "y3", label: "Área afectada" },
+}
 
-  const formattedLabels = data.map((item) => item.datetime)
-  console.log(formattedLabels)
-
-  // format labels to new date
-  function stringToDate(formattedLabels) {
-    const dateLabels = formattedLabels.map((label) => {
-      const [day, month, year] = label.split(' ')
-      const dateObj = new Date(`${year}-${month}-${day}`)
-      return dateObj
-    })
-    return dateLabels
+function generateDataset(config, dataLabel) {
+  return {
+    label: config.label,
+    type: config.type,
+    data: dataLabel,
+    borderColor: config.color,
+    backgroundColor: config.color,
+    borderWidth: config.type === 'bar' ? 0 :3,
+    categoryPercentage: 0.6,
+    barPercentage: 0.6,
+    tension: 0.1,
+    pointRadius: (context) => {
+      return 0
+    },
+    pointHitRadius: 10,
+    spanGaps: true,
+    yAxisID: config.axis,
+    borderDash: config.borderDash,
+    tooltip: {
+      callbacks: {
+        label: (context) => {
+          return `${config.label}: ${context.parsed.y.toFixed(2)} ${config.units}`
+        },
+      },
+    },
   }
+}
+
+function graphic(data, short_average_crop_indices_url) {
+  const labels = data
+    .filter((item) => item.datetime !== '' && item.datetime !== null)
+    .map((item) => formatDate(item.datetime))
+  const formattedLabels = data.map((item) => item.datetime)
   const dateLabels = stringToDate(formattedLabels)
-  console.log(dateLabels)
 
   fetch(short_average_crop_indices_url)
     .then((response) => response.json())
     .then((jsonData) => {
-      const jsonNDVI = jsonData.data.NDVI
+      const jsonNDVI = jsonData.data.NDVI_SMOOTHED
       const jsonAfectedArea = jsonData.data.AFECTED_AREA
       const jsonDates = jsonData.data.Dates
-      console.log(jsonDates)
-
-      // format json dates in new Dates
-      function stringJsonToDate(jsonDates) {
-        const dateJson = jsonDates.map((label) => {
-          const [year, month, day] = label.split('-')
-          const dateObj = new Date(+year, +month - 1, +day)
-          return dateObj
-        })
-        return dateJson
-      }
       const dateJson = stringJsonToDate(jsonDates)
-      console.log(dateJson)
-
-      function interpolateData(dates, values, targetDate) {
-        const interpolatedValues = []
-
-        for (let i = 0; i < targetDate.length; i++) {
-          const { prevDate, nextDate, prevValue, nextValue } =
-            findPreviousAndNext(dates, values, targetDate[i])
-          interpolatedValues.push(
-            interpolate(
-              prevDate,
-              nextDate,
-              prevValue,
-              nextValue,
-              targetDate[i]
-            )[0]
-          )
-        }
-
-        return interpolatedValues
-      }
-
       const interpolateNDVI = interpolateData(dateJson, jsonNDVI, dateLabels)
-      console.log(interpolateNDVI)
-
-      // fill in missing data values
-      function fillMissingDays(jsonDates, jsonAfectedArea, formattedLabels) {
-        const result = []
-        const jsonDatesSet = new Set(jsonDates)
-
-        for (const label of formattedLabels) {
-          if (jsonDatesSet.has(label)) {
-            const index = jsonDates.indexOf(label)
-            result.push(jsonAfectedArea[index])
-          } else {
-            result.push('')
-          }
-        }
-
-        return result
-      }
-
+      
+      const ndviLabel = interpolateNDVI.map((value, index) => ({
+        x: labels[index],
+        y: value,
+      }))
       const filledAfectedArea = fillMissingDays(
         jsonDates,
         jsonAfectedArea,
         formattedLabels
       )
-      console.log(filledAfectedArea)
 
       const datasets = [
-        {
-          label: 'Nubosidad',
-          data: data.map((item) => item.cloudcover),
-          borderColor: '#FFC107',
-          backgroundColor: '#FFC107',
-          borderWidth: 3,
-          tension: 0.1,
-          pointRadius: (context) => {
-            return 0
-          },
-          pointHitRadius: 10,
-          spanGaps: true,
-          fill: false,
-          yAxisID: 'y1',
-          tooltip: {
-            callbacks: {
-              label: (context) => {
-                return `Nubosidad: ${context.parsed.y.toFixed(2)}%`
-              },
-            },
-          },
-        },
-        {
-          label: 'Rad. Solar',
-          data: data.map((item) => item.solarradiation),
-          borderColor: '#800080',
-          backgroundColor: '#800080',
-          borderWidth: 3,
-          tension: 0.1,
-          pointRadius: (context) => {
-            return 0
-          },
-          pointHitRadius: 10,
-          spanGaps: true,
-          fill: false,
-          yAxisID: 'y1',
-          tooltip: {
-            callbacks: {
-              label: (context) => {
-                return `Rad. Solar: ${context.parsed.y.toFixed(2)}W/m2`
-              },
-            },
-          },
-        },
-        {
-          label: 'Temperatura',
-          data: data.map((item) => item.temp),
-          borderColor: '#ff6384',
-          backgroundColor: '#ff6384',
-          borderWidth: 3,
-          tension: 0.1,
-          pointRadius: (context) => {
-            return 0
-          },
-          pointHitRadius: 10,
-          spanGaps: true,
-          fill: false,
-          yAxisID: 'y2',
-          tooltip: {
-            callbacks: {
-              label: (context) => {
-                return `Temperatura: ${context.parsed.y.toFixed(2)}ºC`
-              },
-            },
-          },
-        },
-        {
-          label: 'Vel. de Viento',
-          data: data.map((item) => item.windspeed),
-          borderColor: '#228B22',
-          backgroundColor: '#228B22',
-          borderWidth: 3,
-          tension: 0.1,
-          pointRadius: (context) => {
-            return 0
-          },
-          pointHitRadius: 10,
-          spanGaps: true,
-          fill: false,
-          yAxisID: 'y2',
-          tooltip: {
-            callbacks: {
-              label: (context) => {
-                return `Vel. de Viento: ${context.parsed.y.toFixed(2)}m/s`
-              },
-            },
-          },
-        },
-        {
-          label: 'Precipitación',
-          type: 'bar',
-          categoryPercentage: 0.6,
-          barPercentage: 0.6,
-          data: data.map((item) => item.precip),
-          borderColor: '#36a2eb',
-          backgroundColor: '#36a2eb',
-          tension: 0.1,
-          pointRadius: (context) => {
-            return 0
-          },
-          pointHitRadius: 10,
-          spanGaps: true,
-          fill: false,
-          yAxisID: 'y2',
-          tooltip: {
-            callbacks: {
-              label: (context) => {
-                return `Precipitacion: ${context.parsed.y.toFixed(2)}mm`
-              },
-            },
-          },
-        },
-        {
-          label: 'Vigor',
-          data: interpolateNDVI.map((value, index) => ({
-            x: labels[index],
-            y: value,
-          })),
-          borderColor: '#E5E5E5',
-          backgroundColor: '#E5E5E5',
-          borderWidth: 3,
-          tension: 0.1,
-          pointRadius: (context) => {
-            return 0
-          },
-          pointHitRadius: 10,
-          spanGaps: true,
-          fill: false,
-          yAxisID: 'y3',
-          tooltip: {
-            callbacks: {
-              label: (context) => {
-                return `Vigor: ${context.parsed.y.toFixed(2)}`
-              },
-            },
-          },
-        },
-        {
-          label: 'Area Afectada',
-          type: 'bar',
-          categoryPercentage: 0.6,
-          barPercentage: 0.6,
-          data: filledAfectedArea,
-          borderColor: '#E4684E',
-          backgroundColor: '#E4684E',
-          tension: 0.1,
-          pointRadius: (context) => {
-            return 0
-          },
-          pointHitRadius: 10,
-          spanGaps: true,
-          fill: false,
-          yAxisID: 'y4',
-          tooltip: {
-            callbacks: {
-              label: (context) => {
-                return `Area Afectada: ${context.parsed.y.toFixed(2)}%`
-              },
-            },
-          },
-        },
+        generateDataset(climateConfig.cloudcover, data.map((item) => item.cloudcover)),
+        generateDataset(climateConfig.solarradiation, data.map((item) => item.solarradiation)),
+        generateDataset(climateConfig.temp, data.map((item) => item.temp)),
+        generateDataset(climateConfig.windspeed, data.map((item) => item.windspeed)),
+        generateDataset(climateConfig.precip, data.map((item) => item.precip)),
+        generateDataset(climateConfig.NDVI, ndviLabel),
+        generateDataset(climateConfig.AFECTED_AREA, filledAfectedArea),
       ]
-      console.log(datasets)
+
+      const allData = datasets
+        .filter((dataset) => ['Temperatura', 'Vel. de Viento', 'Precipitación'].includes(dataset.label))
+        .map((dataset) => dataset.data)
+        .flat();
+      const maxValue = Math.max(...allData.filter(Number).map(Number));
+      const nextDecade = Math.max(40, Math.ceil(maxValue / 10) * 10);
 
       const gridColor = '#0070F3'
       const gridColor2 = '#4c8aba'
@@ -313,7 +197,7 @@ function graphic(data, short_average_crop_indices_url) {
         type: 'line',
         data: {
           labels,
-          datasets,
+          datasets
         },
         options: {
           maintainAspectRatio: false,
@@ -323,28 +207,28 @@ function graphic(data, short_average_crop_indices_url) {
             show: {
               animations: {
                 x: {
-                  from: 0,
+                  from: 0
                 },
                 y: {
-                  from: 0,
-                },
-              },
+                  from: 0
+                }
+              }
             },
             hide: {
               animations: {
                 x: {
-                  to: 0,
+                  to: 0
                 },
                 y: {
-                  to: 0,
-                },
-              },
-            },
+                  to: 0
+                }
+              }
+            }
           },
           events: ['mouseout', 'click', 'touchstart', 'touchmove'],
           interaction: {
             mode: 'index',
-            intersect: false,
+            intersect: false
           },
           scales: {
             y3: {
@@ -357,52 +241,47 @@ function graphic(data, short_average_crop_indices_url) {
               ticks: {
                 stepSize: 0.5,
                 color: textColor,
-                beginAtZero: true,
+                beginAtZero: true
               },
               grid: {
-                color: gridColor,
-              },
+                color: gridColor
+              }
             },
             y2: {
               type: 'linear',
               min: 0,
-              max: 30,
-              suggestedMin: 30,
-              suggestedMax: 100,
+              max: nextDecade,
               position: 'left',
               stack: 'y',
               offset: true,
               stackWeight: 1.2,
               ticks: {
-                stepSize: 5,
+                stepSize: 10,
                 color: textColor,
-                beginAtZero: true,
+                beginAtZero: true
               },
               grid: {
-                color: gridColor2,
-              },
+                color: gridColor2
+              }
             },
             y1: {
               type: 'linear',
               min: 0,
-              max: 400,
               position: 'left',
               stack: 'y',
               stackWeight: 0.7,
               ticks: {
                 stepSize: 100,
                 color: textColor,
-                beginAtZero: true,
+                beginAtZero: true
               },
               grid: {
-                color: gridColor,
-              },
+                color: gridColor
+              }
             },
             y5: {
               display: false,
               type: 'linear',
-              min: 0,
-              max: 30,
               position: 'right',
               stack: 'y1',
               offset: true,
@@ -410,31 +289,29 @@ function graphic(data, short_average_crop_indices_url) {
               ticks: {
                 stepSize: 5,
                 color: textColor,
-                beginAtZero: true,
+                beginAtZero: true
               },
               grid: {
-                color: gridColor2,
-              },
+                color: gridColor2
+              }
             },
             y6: {
               display: false,
               type: 'linear',
-              min: 0,
-              max: 400,
               position: 'right',
               stack: 'y1',
               stackWeight: 0.7,
               ticks: {
                 stepSize: 100,
                 color: textColor,
-                beginAtZero: true,
+                beginAtZero: true
               },
               grid: {
-                color: gridColor,
-              },
+                color: gridColor
+              }
             },
             y4: {
-              type: 'linear',
+              display: true,
               min: 0,
               max: 100,
               position: 'right',
@@ -443,11 +320,11 @@ function graphic(data, short_average_crop_indices_url) {
               ticks: {
                 stepSize: 50,
                 color: '#E4684E',
-                beginAtZero: true,
+                beginAtZero: true
               },
               grid: {
-                color: gridColor,
-              },
+                color: gridColor
+              }
             },
             x: {
               stacked: true,
@@ -456,27 +333,27 @@ function graphic(data, short_average_crop_indices_url) {
                 color: textColor,
                 beginAtZero: true,
                 minRotation: window.matchMedia('(max-width: 480px)').matches
-                ? 45
-                : 50,
-              maxRotation: window.matchMedia('(max-width: 480px)').matches
-                ? 45
-                : 50,
+                  ? 45
+                  : 50,
+                maxRotation: window.matchMedia('(max-width: 480px)').matches
+                  ? 45
+                  : 50
               },
               grid: {
                 display: true,
                 color: gridColor,
                 offset: false,
                 drawOnChartArea: true,
-                drawTicks: true,
-              },
-            },
+                drawTicks: true
+              }
+            }
           },
           plugins: {
             tooltip: {
-              enabled: true,
+              enabled: true
             },
             htmlLegend: {
-              containerID: 'legend-container',
+              containerID: 'legend-container'
             },
             legend: {
               display: false,
@@ -487,13 +364,13 @@ function graphic(data, short_average_crop_indices_url) {
                 padding: 10,
                 boxHeight: 14,
                 font: {
-                  size: 14,
-                },
-              },
-            },
-          },
+                  size: 14
+                }
+              }
+            }
+          }
         },
-        plugins: [htmlLegendPlugin],
+        plugins: [htmlLegendPlugin]
       }
       const ctx = document.getElementById('chart').getContext('2d')
       new Chart(ctx, config)
@@ -615,5 +492,5 @@ const htmlLegendPlugin = {
       li.appendChild(textContainer)
       ul.appendChild(li)
     })
-  },
+  }
 }
